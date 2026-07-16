@@ -1,0 +1,129 @@
+# LiteLLM free-model aggregator — stacks 10 free tiers, auto-rotates on limits.
+# Start:  bash setup-free-stack.sh   (loads .env.free-stack, runs on http://localhost:4000)
+# Call any alias below from OpenCode / CCR / Cline / Aider:  free-coder | free-general | free-fast
+#
+# HOW ROTATION WORKS: multiple deployments share one model_name. On 429/5xx/timeout LiteLLM
+# cools that deployment down for `cooldown_time`s and moves to the next automatically. When the
+# whole alias is exhausted it falls through to the `fallbacks` group. That is your "rotate to
+# second-best when the limit hits" — across ALL providers, not just one.
+#
+# Every model line is tagged `# VERIFY` — provider slugs drift monthly. If a call 404s, open that
+# provider's dashboard, copy the current model id, paste it here. Order = best model first.
+
+model_list:
+
+  # ── free-coder : hard coding / agentic (biggest, strongest free models) ──
+  - model_name: free-coder
+    litellm_params:
+      model: nvidia_nim/deepseek-ai/deepseek-r1          # VERIFY on build.nvidia.com
+      api_key: os.environ/NVIDIA_NIM_API_KEY
+  - model_name: free-coder
+    litellm_params:
+      model: nvidia_nim/zai-org/glm-5                    # VERIFY GLM-5 slug on NIM
+      api_key: os.environ/NVIDIA_NIM_API_KEY
+  - model_name: free-coder
+    litellm_params:
+      model: openrouter/qwen/qwen3-coder:free            # Qwen3-Coder, free on OpenRouter (262K ctx) — verified live 07-07
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: free-coder
+    litellm_params:
+      model: openrouter/openai/gpt-oss-120b:free         # GPT-OSS 120B, free on OpenRouter — verified live 07-07
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: free-coder
+    litellm_params:
+      model: cerebras/zai-glm-4.7                         # GLM-4.7 on Cerebras — strong coder, ~2600 tok/s
+      api_key: os.environ/CEREBRAS_API_KEY
+  - model_name: free-coder
+    litellm_params:
+      model: cerebras/gpt-oss-120b                       # GPT-OSS 120B on Cerebras, ~2600 tok/s (Qwen-235B not on free tier)
+      api_key: os.environ/CEREBRAS_API_KEY
+  - model_name: free-coder
+    litellm_params:
+      model: groq/openai/gpt-oss-120b                    # Groq's current flagship open model (Kimi/Llama deprecated Jun'26)
+      api_key: os.environ/GROQ_API_KEY
+  - model_name: free-coder
+    litellm_params:
+      model: openai/big-pickle                           # OpenCode Zen (GLM-4.6-class) — always-free anchor, already on your Mac, TESTED 07-07
+      api_key: os.environ/ZEN_API_KEY
+      api_base: https://opencode.ai/zen/v1
+  - model_name: free-coder
+    litellm_params:
+      model: openai/north-mini-code-free                 # OpenCode Zen free coder
+      api_key: os.environ/ZEN_API_KEY
+      api_base: https://opencode.ai/zen/v1
+
+  # ── free-general : everyday work, research, automations, Q&A (fast + high volume) ──
+  - model_name: free-general
+    litellm_params:
+      model: gemini/gemini-2.5-flash                     # 1,500 req/day free
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: free-general
+    litellm_params:
+      model: sambanova/Meta-Llama-3.3-70B-Instruct       # VERIFY (20M tok/day)
+      api_key: os.environ/SAMBANOVA_API_KEY
+  - model_name: free-general
+    litellm_params:
+      model: groq/openai/gpt-oss-120b                    # Groq current flagship (fast, high volume)
+      api_key: os.environ/GROQ_API_KEY
+  - model_name: free-general
+    litellm_params:
+      model: openrouter/qwen/qwen3-next-80b-a3b-instruct:free   # Qwen3-Next 80B, free on OpenRouter — verified live 07-07
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: free-general
+    litellm_params:
+      model: openai/deepseek-v4-flash-free               # OpenCode Zen — always-free, already on your Mac
+      api_key: os.environ/ZEN_API_KEY
+      api_base: https://opencode.ai/zen/v1
+
+  # ── free-fast : quick/cheap tasks, glue, classification (lowest latency) ──
+  - model_name: free-fast
+    litellm_params:
+      model: groq/openai/gpt-oss-20b                     # fast + current, high req/day
+      api_key: os.environ/GROQ_API_KEY
+  - model_name: free-fast
+    litellm_params:
+      model: gemini/gemini-2.5-flash-lite                # fast, 1,500/day free
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: free-fast
+    litellm_params:
+      model: openai/deepseek-v4-flash-free               # OpenCode Zen — always-free fast model
+      api_key: os.environ/ZEN_API_KEY
+      api_base: https://opencode.ai/zen/v1
+
+  # ── free-bigctx : 200K+ context jobs (whole-repo reads) ──
+  - model_name: free-bigctx
+    litellm_params:
+      model: openai/glm-4.7-flash                        # Z.ai GLM-4.7-Flash, 203K ctx, free
+      api_key: os.environ/ZAI_API_KEY
+      api_base: https://api.z.ai/api/paas/v4             # VERIFY base path in Z.ai docs
+  - model_name: free-bigctx
+    litellm_params:
+      model: openrouter/qwen/qwen3-coder:free            # 262K ctx fallback
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # ── codestral : free fill-in-the-middle for IDE completions ──
+  - model_name: codestral
+    litellm_params:
+      model: mistral/codestral-latest                    # Mistral free Experiment tier
+      api_key: os.environ/MISTRAL_API_KEY
+
+# Cross-alias safety net: if a whole alias is throttled, fall through to the next pool.
+litellm_settings:
+  fallbacks:
+    - free-coder: ["free-general", "free-fast"]
+    - free-general: ["free-coder", "free-fast"]
+    - free-fast: ["free-general", "free-coder"]
+    - free-bigctx: ["free-coder", "free-general"]
+  num_retries: 3
+  request_timeout: 120
+  drop_params: true          # strip params a fallback provider doesn't support (prevents silent fails)
+
+router_settings:
+  routing_strategy: simple-shuffle   # random pick + failover across all deployments in the alias
+  num_retries: 3
+  timeout: 120
+  allowed_fails: 2
+  cooldown_time: 60          # secs a throttled deployment sits out before retry
+
+general_settings:
+  master_key: sk-freestack-local   # local-only guard; use this as the API key in your tools
